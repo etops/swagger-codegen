@@ -45,3 +45,5 @@ samples/client/petstore/php/SwaggerClient-php/vendor/
 
 samples/client/petstore/silex/SwaggerServer/composer.lock
 samples/client/petstore/silex/SwaggerServer/venodr/
+
+node_modules

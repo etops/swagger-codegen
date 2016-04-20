@@ -23,6 +23,8 @@ packages/
 .packages
 .vagrant/
 
+node_modules
+
 .settings
 
 *.mustache~
