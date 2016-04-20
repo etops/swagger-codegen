@@ -1,0 +1,26 @@
+{
+  "name": "swagger-codegen",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://ckaeslin@github.com/etops/swagger-codegen.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/etops/swagger-codegen/issues"
+  },
+  "homepage": "https://github.com/etops/swagger-codegen#readme",
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "gulp-batch": "^1.0.5",
+    "gulp-run": "^1.6.12",
+    "gulp-shell": "^0.5.2",
+    "gulp-watch": "^4.3.5"
+  }
+}
