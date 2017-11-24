@@ -30,6 +30,8 @@ public class JavaScriptClientOptionsTest extends AbstractOptionsTest {
     protected void setExpectations() {
         // Commented generic options not yet supported by JavaScript codegen.
         new Expectations(clientCodegen) {{
+            clientCodegen.setInvokerPackage(JavaScriptOptionsProvider.INVOKER_PACKAGE_VALUE);
+            times = 1;
             clientCodegen.setModelPackage(JavaScriptOptionsProvider.MODEL_PACKAGE_VALUE);
             times = 1;
             clientCodegen.setApiPackage(JavaScriptOptionsProvider.API_PACKAGE_VALUE);
@@ -56,7 +58,7 @@ public class JavaScriptClientOptionsTest extends AbstractOptionsTest {
             times = 1;
             clientCodegen.setProjectVersion(JavaScriptOptionsProvider.PROJECT_VERSION_VALUE);
             times = 1;
-            clientCodegen.setProjectLicenseName(JavaScriptOptionsProvider.PROJECT_LICENSE_NAME_VALUE);
+            clientCodegen.setLicenseName(JavaScriptOptionsProvider.PROJECT_LICENSE_NAME_VALUE);
             times = 1;
             clientCodegen.setUsePromises(Boolean.valueOf(JavaScriptOptionsProvider.USE_PROMISES_VALUE));
             times = 1;
@@ -65,6 +67,8 @@ public class JavaScriptClientOptionsTest extends AbstractOptionsTest {
             clientCodegen.setEmitModelMethods(Boolean.valueOf(JavaScriptOptionsProvider.EMIT_MODEL_METHODS_VALUE));
             times = 1;
             clientCodegen.setEmitJSDoc(Boolean.valueOf(JavaScriptOptionsProvider.EMIT_JS_DOC_VALUE));
+            times = 1;
+            clientCodegen.setUseES6(Boolean.valueOf(JavaScriptOptionsProvider.USE_ES6_VALUE));
             times = 1;
         }};
     }

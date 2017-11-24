@@ -18,10 +18,11 @@ public class OnlineJavaClientOptionsTest {
 
     @Test
     public void getOptionsTest() throws ApiException {
-        final Map<String, CliOption> options = Generator.getOptions(new JavaOptionsProvider().getLanguage());
+        final Map<String, CliOption> options =
+                Generator.getOptions(new JavaOptionsProvider().getLanguage());
         assertNotNull(options);
         final CliOption opt = options.get(CodegenConstants.LIBRARY);
         assertNotNull(opt);
-        assertEquals(opt.getDefault(), JavaClientCodegen.DEFAULT_LIBRARY);
+        assertEquals(opt.getDefault(), "okhttp-gson");
     }
 }

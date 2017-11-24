@@ -1,5 +1,7 @@
 # coding: utf-8
 
+# flake8: noqa
+
 """
 Run the tests.
 $ pip install nose (optional)
@@ -11,14 +13,34 @@ import time
 import unittest
 import datetime
 
-import swagger_client
+import petstore_api
 
 
 class DeserializationTests(unittest.TestCase):
 
     def setUp(self):
-        self.api_client = swagger_client.ApiClient()
+        self.api_client = petstore_api.ApiClient()
         self.deserialize = self.api_client._ApiClient__deserialize
+
+    def test_enum_test(self):
+        """ deserialize dict(str, Enum_Test) """
+        data = {
+            'enum_test': {
+                "enum_string": "UPPER",
+                "enum_integer": 1,
+                "enum_number": 1.1,
+                "outerEnum": "placed"
+            }
+        }
+
+        deserialized = self.deserialize(data, 'dict(str, EnumTest)')
+        self.assertTrue(isinstance(deserialized, dict))
+        self.assertTrue(isinstance(deserialized['enum_test'], petstore_api.EnumTest))
+        self.assertEqual(deserialized['enum_test'],
+                         petstore_api.EnumTest(enum_string="UPPER",
+                                               enum_integer=1,
+                                               enum_number=1.1,
+                                               outer_enum=petstore_api.OuterEnum.PLACED))
 
     def test_deserialize_dict_str_pet(self):
         """ deserialize dict(str, Pet) """
@@ -45,7 +67,7 @@ class DeserializationTests(unittest.TestCase):
 
         deserialized = self.deserialize(data, 'dict(str, Pet)')
         self.assertTrue(isinstance(deserialized, dict))
-        self.assertTrue(isinstance(deserialized['pet'], swagger_client.Pet))
+        self.assertTrue(isinstance(deserialized['pet'], petstore_api.Pet))
 
     def test_deserialize_dict_str_int(self):
         """ deserialize dict(str, int) """
@@ -78,12 +100,42 @@ class DeserializationTests(unittest.TestCase):
     def test_deserialize_pet(self):
         """ deserialize pet """
         data = {
+            "id": 0,
+            "category": {
+                "id": 0,
+                "name": "string"
+            },
+            "name": "doggie",
+            "photoUrls": [
+                "string"
+            ],
+            "tags": [
+                {
+                    "id": 0,
+                    "name": "string"
+                }
+            ],
+            "status": "available"
+        }
+        deserialized = self.deserialize(data, "Pet")
+        self.assertTrue(isinstance(deserialized, petstore_api.Pet))
+        self.assertEqual(deserialized.id, 0)
+        self.assertEqual(deserialized.name, "doggie")
+        self.assertTrue(isinstance(deserialized.category, petstore_api.Category))
+        self.assertEqual(deserialized.category.name, "string")
+        self.assertTrue(isinstance(deserialized.tags, list))
+        self.assertEqual(deserialized.tags[0].name, "string")
+
+    def test_deserialize_list_of_pet(self):
+        """ deserialize list[Pet] """
+        data = [
+            {
                 "id": 0,
                 "category": {
                     "id": 0,
                     "name": "string"
                 },
-                "name": "doggie",
+                "name": "doggie0",
                 "photoUrls": [
                     "string"
                 ],
@@ -94,57 +146,28 @@ class DeserializationTests(unittest.TestCase):
                     }
                 ],
                 "status": "available"
-            }
-        deserialized = self.deserialize(data, "Pet")
-        self.assertTrue(isinstance(deserialized, swagger_client.Pet))
-        self.assertEqual(deserialized.id, 0)
-        self.assertEqual(deserialized.name, "doggie")
-        self.assertTrue(isinstance(deserialized.category, swagger_client.Category))
-        self.assertEqual(deserialized.category.name, "string")
-        self.assertTrue(isinstance(deserialized.tags, list))
-        self.assertEqual(deserialized.tags[0].name, "string")
-
-    def test_deserialize_list_of_pet(self):
-        """ deserialize list[Pet] """
-        data = [{
-            "id": 0,
-            "category": {
-                "id": 0,
-                "name": "string"
             },
-            "name": "doggie0",
-            "photoUrls": [
-                "string"
-            ],
-            "tags": [
-                {
+            {
+                "id": 1,
+                "category": {
                     "id": 0,
                     "name": "string"
-                }
-            ],
-            "status": "available"
-        },
-        {
-            "id": 1,
-            "category": {
-                "id": 0,
-                "name": "string"
-            },
-            "name": "doggie1",
-            "photoUrls": [
-                "string"
-            ],
-            "tags": [
-                {
-                    "id": 0,
-                    "name": "string"
-                }
-            ],
-            "status": "available"
-        }]
+                },
+                "name": "doggie1",
+                "photoUrls": [
+                    "string"
+                ],
+                "tags": [
+                    {
+                        "id": 0,
+                        "name": "string"
+                    }
+                ],
+                "status": "available"
+            }]
         deserialized = self.deserialize(data, "list[Pet]")
         self.assertTrue(isinstance(deserialized, list))
-        self.assertTrue(isinstance(deserialized[0], swagger_client.Pet))
+        self.assertTrue(isinstance(deserialized[0], petstore_api.Pet))
         self.assertEqual(deserialized[0].id, 0)
         self.assertEqual(deserialized[1].id, 1)
         self.assertEqual(deserialized[0].name, "doggie0")

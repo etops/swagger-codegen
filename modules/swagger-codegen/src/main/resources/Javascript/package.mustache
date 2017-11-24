@@ -1,14 +1,17 @@
 {
   "name": "{{{projectName}}}",
   "version": "{{{projectVersion}}}",
-  "description": "{{{projectDescription}}}",{{#projectLicenseName}}
-  "license": "{{{projectLicenseName}}}",{{/projectLicenseName}}
-  "main": "{{sourceFolder}}/index.js",
+  "description": "{{{projectDescription}}}",
+  "license": "{{licenseName}}",
+  "main": "{{sourceFolder}}{{#invokerPackage}}/{{invokerPackage}}{{/invokerPackage}}/index.js",
   "scripts": {
     "test": "./node_modules/mocha/bin/mocha --recursive"
   },
+  "browser": {
+    "fs": false
+  },
   "dependencies": {
-    "superagent": "1.7.1"
+    "superagent": "3.5.2"
   },
   "devDependencies": {
     "mocha": "~2.3.4",

@@ -10,10 +10,15 @@ describe('ApiClient', function() {
   describe('defaults', function() {
     it('should have correct default values with the default API client', function() {
       expect(apiClient).to.be.ok();
-      expect(apiClient.basePath).to.be('http://petstore.swagger.io/v2');
+      expect(apiClient.basePath).to.be('http://petstore.swagger.io:80/v2');
       expect(apiClient.authentications).to.eql({
         petstore_auth: {type: 'oauth2'},
-        api_key: {type: 'apiKey', 'in': 'header', name: 'api_key'},
+        http_basic_test: {type: 'basic'},
+        api_key: {type: 'apiKey', 'in': 'header', name: 'api_key'}
+      /* comment out the following as these fake security def (testing purpose)
+       * are removed from the spec, we'll add these back after updating the 
+       * petstore server
+       *
         test_http_basic: {type: 'basic'},
         test_api_client_id: {
           type: 'apiKey',
@@ -34,14 +39,14 @@ describe('ApiClient', function() {
           type: 'apiKey',
           'in': 'header',
           name: 'test_api_key_header'
-        }
+        }*/
       });
     });
 
     it('should have correct default values with new API client and can customize it', function() {
       var newClient = new SwaggerPetstore.ApiClient;
-      expect(newClient.basePath).to.be('http://petstore.swagger.io/v2');
-      expect(newClient.buildUrl('/abc', {})).to.be('http://petstore.swagger.io/v2/abc');
+      expect(newClient.basePath).to.be('http://petstore.swagger.io:80/v2');
+      expect(newClient.buildUrl('/abc', {})).to.be('http://petstore.swagger.io:80/v2/abc');
 
       newClient.basePath = 'http://example.com';
       expect(newClient.basePath).to.be('http://example.com');
@@ -97,16 +102,16 @@ describe('ApiClient', function() {
   describe('#buildUrl', function() {
     it('should work without path parameters in the path', function() {
       expect(apiClient.buildUrl('/abc', {})).to
-        .be('http://petstore.swagger.io/v2/abc');
+        .be('http://petstore.swagger.io:80/v2/abc');
       expect(apiClient.buildUrl('/abc/def?ok', {id: 123})).to
-        .be('http://petstore.swagger.io/v2/abc/def?ok');
+        .be('http://petstore.swagger.io:80/v2/abc/def?ok');
     });
 
     it('should work with path parameters in the path', function() {
       expect(apiClient.buildUrl('/{id}', {id: 123})).to
-        .be('http://petstore.swagger.io/v2/123');
+        .be('http://petstore.swagger.io:80/v2/123');
       expect(apiClient.buildUrl('/abc/{id}/{name}?ok', {id: 456, name: 'a b'})).to.
-        be('http://petstore.swagger.io/v2/abc/456/a%20b?ok');
+        be('http://petstore.swagger.io:80/v2/abc/456/a%20b?ok');
     });
   });
 

@@ -1,4 +1,4 @@
-FROM maven:3.3-jdk-7
+FROM jimschubert/8-jdk-alpine-mvn:1.0
 
 # gpg keys listed at https://github.com/nodejs/node
 RUN set -ex \
@@ -31,10 +31,12 @@ WORKDIR /tools
 VOLUME  /src
 VOLUME  /root/.m2/repository
 
-ADD . /opt/swagger-codegen
+ENV GEN_DIR /opt/swagger-codegen
+WORKDIR ${GEN_DIR}
+VOLUME  ${MAVEN_HOME}/.m2/repository
 
-RUN cd /opt/swagger-codegen && mvn package
-
+# Required from a licensing standpoint
+COPY ./LICENSE ${GEN_DIR}
 
 COPY gulpfile.js /tools/gulpfile.js
 COPY package.json /tools/package.json

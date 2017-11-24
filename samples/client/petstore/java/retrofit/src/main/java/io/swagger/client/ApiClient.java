@@ -9,6 +9,10 @@ import java.util.Map;
 
 import org.apache.oltu.oauth2.client.request.OAuthClientRequest.AuthenticationRequestBuilder;
 import org.apache.oltu.oauth2.client.request.OAuthClientRequest.TokenRequestBuilder;
+import org.joda.time.DateTime;
+import org.joda.time.LocalDate;
+import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.ISODateTimeFormat;
 
 import retrofit.RestAdapter;
 import retrofit.client.OkClient;
@@ -22,6 +26,9 @@ import retrofit.mime.TypedOutput;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 import com.squareup.okhttp.Interceptor;
 import com.squareup.okhttp.OkHttpClient;
 
@@ -45,11 +52,17 @@ public class ApiClient {
 
     public ApiClient(String[] authNames) {
         this();
-        for(String authName : authNames) { 
+        for(String authName : authNames) {
             Interceptor auth;
-            if (authName == "api_key") { 
+            if ("api_key".equals(authName)) {
                 auth = new ApiKeyAuth("header", "api_key");
-            } else if (authName == "petstore_auth") { 
+            } else if ("api_key_query".equals(authName)) {
+                auth = new ApiKeyAuth("query", "api_key_query");
+            } else if ("http_basic_test".equals(authName)) {
+                auth = new HttpBasicAuth();
+
+            } else if ("petstore_auth".equals(authName)) {
+
                 auth = new OAuth(OAuthFlow.implicit, "http://petstore.swagger.io/api/oauth/dialog", "", "write:pets, read:pets");
             } else {
                 throw new RuntimeException("auth name \"" + authName + "\" not found in available auth names");
@@ -60,7 +73,7 @@ public class ApiClient {
 
     /**
      * Basic constructor for single auth name
-     * @param authName
+     * @param authName Authentication name
      */
     public ApiClient(String authName) {
         this(new String[]{authName});
@@ -68,8 +81,8 @@ public class ApiClient {
 
     /**
      * Helper constructor for single api key
-     * @param authName
-     * @param apiKey
+     * @param authName Authentication name
+     * @param apiKey API key
      */
     public ApiClient(String authName, String apiKey) {
         this(authName);
@@ -78,9 +91,9 @@ public class ApiClient {
 
     /**
      * Helper constructor for single basic auth or password oauth2
-     * @param authName
-     * @param username
-     * @param password
+     * @param authName Authentication name
+     * @param username Username
+     * @param password Password
      */
     public ApiClient(String authName, String username, String password) {
         this(authName);
@@ -89,11 +102,11 @@ public class ApiClient {
 
     /**
      * Helper constructor for single password oauth2
-     * @param authName
-     * @param clientId
-     * @param secret
-     * @param username
-     * @param password
+     * @param authName Authentication name
+     * @param clientId Client ID
+     * @param secret Client secret
+     * @param username Username
+     * @param password Password
      */
     public ApiClient(String authName, String clientId, String secret, String username, String password) {
         this(authName);
@@ -107,13 +120,15 @@ public class ApiClient {
    public void createDefaultAdapter() {
         Gson gson = new GsonBuilder()
                 .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+                .registerTypeAdapter(DateTime.class, new DateTimeTypeAdapter())
+                .registerTypeAdapter(LocalDate.class, new LocalDateTypeAdapter())
                 .create();
 
         okClient = new OkHttpClient();
 
         adapterBuilder = new RestAdapter
                 .Builder()
-                .setEndpoint("http://petstore.swagger.io/v2")
+                .setEndpoint("http://petstore.swagger.io:80/v2")
                 .setClient(new OkClient(okClient))
                 .setConverter(new GsonConverterWrapper(gson));
     }
@@ -125,7 +140,7 @@ public class ApiClient {
 
     /**
      * Helper method to configure the first api key found
-     * @param apiKey
+     * @param apiKey API key
      */
     private void setApiKey(String apiKey) {
         for(Interceptor apiAuthorization : apiAuthorizations.values()) {
@@ -139,8 +154,8 @@ public class ApiClient {
 
     /**
      * Helper method to configure the username/password for basic auth or password oauth
-     * @param username
-     * @param password
+     * @param username Username
+     * @param password Password
      */
     private void setCredentials(String username, String password) {
         for(Interceptor apiAuthorization : apiAuthorizations.values()) {
@@ -159,7 +174,7 @@ public class ApiClient {
 
     /**
      * Helper method to configure the token endpoint of the first oauth found in the apiAuthorizations (there should be only one)
-     * @return
+     * @return Token request builder
      */
     public TokenRequestBuilder getTokenEndPoint() {
         for(Interceptor apiAuthorization : apiAuthorizations.values()) {
@@ -173,7 +188,7 @@ public class ApiClient {
 
     /**
      * Helper method to configure authorization endpoint of the first oauth found in the apiAuthorizations (there should be only one)
-     * @return
+     * @return Authentication request builder
      */
     public AuthenticationRequestBuilder getAuthorizationEndPoint() {
         for(Interceptor apiAuthorization : apiAuthorizations.values()) {
@@ -187,7 +202,7 @@ public class ApiClient {
 
     /**
      * Helper method to pre-set the oauth access token of the first oauth found in the apiAuthorizations (there should be only one)
-     * @param accessToken
+     * @param accessToken Access token
      */
     public void setAccessToken(String accessToken) {
         for(Interceptor apiAuthorization : apiAuthorizations.values()) {
@@ -201,9 +216,9 @@ public class ApiClient {
     
     /**
      * Helper method to configure the oauth accessCode/implicit flow parameters
-     * @param clientId
-     * @param clientSecret
-     * @param redirectURI
+     * @param clientId Client ID
+     * @param clientSecret Client secret
+     * @param redirectURI Redirect URI
      */
     public void configureAuthorizationFlow(String clientId, String clientSecret, String redirectURI) {
         for(Interceptor apiAuthorization : apiAuthorizations.values()) {
@@ -223,7 +238,7 @@ public class ApiClient {
     
     /**
      * Configures a listener which is notified when a new access token is received.
-     * @param accessTokenListener
+     * @param accessTokenListener Access token listener
      */
     public void registerAccessTokenListener(AccessTokenListener accessTokenListener) {
         for(Interceptor apiAuthorization : apiAuthorizations.values()) {
@@ -237,8 +252,8 @@ public class ApiClient {
 
     /**
      * Adds an authorization to be used by the client
-     * @param authName
-     * @param authorization
+     * @param authName Authentication name
+     * @param authorization Authorization
      */
     public void addAuthorization(String authName, Interceptor authorization) {
         if (apiAuthorizations.containsKey(authName)) {
@@ -276,7 +291,7 @@ public class ApiClient {
 
     /**
      * Clones the okClient given in parameter, adds the auth interceptors and uses it to configure the RestAdapter
-     * @param okClient
+     * @param okClient OkHttp client
      */
     public void configureFromOkclient(OkHttpClient okClient) {
         OkHttpClient clone = okClient.clone();
@@ -336,5 +351,64 @@ class GsonConverterWrapper implements Converter {
             }
         }
 
+    }
+}
+
+/**
+ * Gson TypeAdapter for Joda DateTime type
+ */
+class DateTimeTypeAdapter extends TypeAdapter<DateTime> {
+
+    private final DateTimeFormatter parseFormatter = ISODateTimeFormat.dateOptionalTimeParser();
+    private final DateTimeFormatter printFormatter = ISODateTimeFormat.dateTime();
+
+    @Override
+    public void write(JsonWriter out, DateTime date) throws IOException {
+        if (date == null) {
+            out.nullValue();
+        } else {
+            out.value(printFormatter.print(date));
+        }
+    }
+
+    @Override
+    public DateTime read(JsonReader in) throws IOException {
+        switch (in.peek()) {
+            case NULL:
+                in.nextNull();
+                return null;
+            default:
+                String date = in.nextString();
+                return parseFormatter.parseDateTime(date);
+        }
+    }
+}
+
+/**
+ * Gson TypeAdapter for Joda DateTime type
+ */
+class LocalDateTypeAdapter extends TypeAdapter<LocalDate> {
+
+    private final DateTimeFormatter formatter = ISODateTimeFormat.date();
+
+    @Override
+    public void write(JsonWriter out, LocalDate date) throws IOException {
+        if (date == null) {
+            out.nullValue();
+        } else {
+            out.value(formatter.print(date));
+        }
+    }
+
+    @Override
+    public LocalDate read(JsonReader in) throws IOException {
+        switch (in.peek()) {
+            case NULL:
+                in.nextNull();
+                return null;
+            default:
+                String date = in.nextString();
+                return formatter.parseLocalDate(date);
+        }
     }
 }

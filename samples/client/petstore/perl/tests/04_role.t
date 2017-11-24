@@ -50,10 +50,10 @@ is $get_pet->tags->[0]->id, '11', 'stored and retrieved: got the proper tag id';
 
 # API method docs 
 is_deeply(	[sort keys %{$api->pet_api->method_documentation}], 
-			[ 'add_pet', 'add_pet_using_byte_array', 'delete_pet', 'find_pets_by_status', 'find_pets_by_tags', 'get_pet_by_id', 'get_pet_by_id_in_object', 'pet_pet_idtesting_byte_arraytrue_get', 'update_pet', 'update_pet_with_form', 'upload_file'], 
+			[ 'add_pet', 'delete_pet', 'find_pets_by_status', 'find_pets_by_tags', 'get_pet_by_id', 'update_pet', 'update_pet_with_form', 'upload_file'], 
 			"Pet API method_documentation has the correct keys");
 is $api->pet_api->method_documentation->{get_pet_by_id}->{params}->{pet_id}->{description}, 
-	'ID of pet that needs to be fetched', 'get_pet_by_id parameter pet_id description is correct';
+	'ID of pet to return', 'get_pet_by_id parameter pet_id description is correct';
 is $api->pet_api->method_documentation->{get_pet_by_id}->{params}->{pet_id}->{required},
 	1, 'get_pet_by_id parameter pet_id is required';
 is $api->pet_api->method_documentation->{get_pet_by_id}->{params}->{pet_id}->{data_type},
@@ -95,26 +95,26 @@ my $tokens = {
 
 $api->_cfg->accept_tokens({%$tokens}); # pass a copy
 no warnings 'once';
-is $WWW::SwaggerClient::Configuration::username, 'UserName', 'accept_tokens() correctly set the username';
-is $WWW::SwaggerClient::Configuration::password, 'PassWord', 'accept_tokens() correctly set the password';
-is $WWW::SwaggerClient::Configuration::access_token, 'OAuth_token', 'accept_tokens() correctly set the oauth';
+is $api->_cfg->{username}, 'UserName', 'accept_tokens() correctly set the username';
+is $api->_cfg->{password}, 'PassWord', 'accept_tokens() correctly set the password';
+is $api->_cfg->{access_token}, 'OAuth_token', 'accept_tokens() correctly set the oauth';
 
 my $api_key_href = {
           'anotherKey' => 'another_key_token',
           'someKey' => 'some_key_token'
         };
-cmp_deeply( $WWW::SwaggerClient::Configuration::api_key, $api_key_href, 'accept_tokens() correctly set api_key' );
+cmp_deeply( $api->_cfg->{api_key}, $api_key_href, 'accept_tokens() correctly set api_key' );
 
 my $api_key_prefix_href = {
           'someKey' => 'some_key_prefix'
         };
-cmp_deeply( $WWW::SwaggerClient::Configuration::api_key_prefix, $api_key_prefix_href, 'accept_tokens() correctly set api_key_prefix' );
+cmp_deeply( $api->_cfg->{api_key_prefix}, $api_key_prefix_href, 'accept_tokens() correctly set api_key_prefix' );
 
 my $api_key_in = {
           'someKey' => 'query',
           'anotherKey' => 'head'
         };
-cmp_deeply( $WWW::SwaggerClient::Configuration::api_key_in, $api_key_in, 'accept_tokens() correctly set api_key_in' );
+cmp_deeply( $api->_cfg->{api_key_in}, $api_key_in, 'accept_tokens() correctly set api_key_in' );
 
 use warnings 'once';
 
