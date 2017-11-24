@@ -5,7 +5,7 @@
 use WWW::SwaggerClient::Object::UserApi;
 ```
 
-All URIs are relative to *http://petstore.swagger.io/v2*
+All URIs are relative to *http://petstore.swagger.io:80/v2*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
@@ -29,8 +29,10 @@ This can only be done by the logged in user.
 ### Example 
 ```perl
 use Data::Dumper;
+use WWW::SwaggerClient::UserApi;
+my $api_instance = WWW::SwaggerClient::UserApi->new(
+);
 
-my $api_instance = WWW::SwaggerClient::UserApi->new();
 my $body = WWW::SwaggerClient::Object::User->new(); # User | Created user object
 
 eval { 
@@ -45,7 +47,7 @@ if ($@) {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**User**](User.md)| Created user object | [optional] 
+ **body** | [**User**](User.md)| Created user object | 
 
 ### Return type
 
@@ -55,10 +57,10 @@ void (empty response body)
 
 No authorization required
 
-### HTTP reuqest headers
+### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: application/json, application/xml
+ - **Accept**: application/xml, application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -72,9 +74,11 @@ Creates list of users with given input array
 ### Example 
 ```perl
 use Data::Dumper;
+use WWW::SwaggerClient::UserApi;
+my $api_instance = WWW::SwaggerClient::UserApi->new(
+);
 
-my $api_instance = WWW::SwaggerClient::UserApi->new();
-my $body = (WWW::SwaggerClient::Object::ARRAY[User]->new()); # ARRAY[User] | List of user object
+my $body = [WWW::SwaggerClient::Object::ARRAY[User]->new()]; # ARRAY[User] | List of user object
 
 eval { 
     $api_instance->create_users_with_array_input(body => $body);
@@ -88,7 +92,7 @@ if ($@) {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**ARRAY[User]**](User.md)| List of user object | [optional] 
+ **body** | [**ARRAY[User]**](User.md)| List of user object | 
 
 ### Return type
 
@@ -98,10 +102,10 @@ void (empty response body)
 
 No authorization required
 
-### HTTP reuqest headers
+### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: application/json, application/xml
+ - **Accept**: application/xml, application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -115,9 +119,11 @@ Creates list of users with given input array
 ### Example 
 ```perl
 use Data::Dumper;
+use WWW::SwaggerClient::UserApi;
+my $api_instance = WWW::SwaggerClient::UserApi->new(
+);
 
-my $api_instance = WWW::SwaggerClient::UserApi->new();
-my $body = (WWW::SwaggerClient::Object::ARRAY[User]->new()); # ARRAY[User] | List of user object
+my $body = [WWW::SwaggerClient::Object::ARRAY[User]->new()]; # ARRAY[User] | List of user object
 
 eval { 
     $api_instance->create_users_with_list_input(body => $body);
@@ -131,7 +137,7 @@ if ($@) {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**ARRAY[User]**](User.md)| List of user object | [optional] 
+ **body** | [**ARRAY[User]**](User.md)| List of user object | 
 
 ### Return type
 
@@ -141,10 +147,10 @@ void (empty response body)
 
 No authorization required
 
-### HTTP reuqest headers
+### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: application/json, application/xml
+ - **Accept**: application/xml, application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -158,12 +164,10 @@ This can only be done by the logged in user.
 ### Example 
 ```perl
 use Data::Dumper;
+use WWW::SwaggerClient::UserApi;
+my $api_instance = WWW::SwaggerClient::UserApi->new(
+);
 
-# Configure HTTP basic authorization: test_http_basic
-$WWW::SwaggerClient::Configuration::username = 'YOUR_USERNAME';
-$WWW::SwaggerClient::Configuration::password = 'YOUR_PASSWORD';
-
-my $api_instance = WWW::SwaggerClient::UserApi->new();
 my $username = 'username_example'; # string | The name that needs to be deleted
 
 eval { 
@@ -186,12 +190,12 @@ void (empty response body)
 
 ### Authorization
 
-[test_http_basic](../README.md#test_http_basic)
+No authorization required
 
-### HTTP reuqest headers
+### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: application/json, application/xml
+ - **Accept**: application/xml, application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -205,9 +209,11 @@ Get user by user name
 ### Example 
 ```perl
 use Data::Dumper;
+use WWW::SwaggerClient::UserApi;
+my $api_instance = WWW::SwaggerClient::UserApi->new(
+);
 
-my $api_instance = WWW::SwaggerClient::UserApi->new();
-my $username = 'username_example'; # string | The name that needs to be fetched. Use user1 for testing.
+my $username = 'username_example'; # string | The name that needs to be fetched. Use user1 for testing. 
 
 eval { 
     my $result = $api_instance->get_user_by_name(username => $username);
@@ -222,7 +228,7 @@ if ($@) {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **username** | **string**| The name that needs to be fetched. Use user1 for testing. | 
+ **username** | **string**| The name that needs to be fetched. Use user1 for testing.  | 
 
 ### Return type
 
@@ -232,10 +238,10 @@ Name | Type | Description  | Notes
 
 No authorization required
 
-### HTTP reuqest headers
+### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: application/json, application/xml
+ - **Accept**: application/xml, application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -249,8 +255,10 @@ Logs user into the system
 ### Example 
 ```perl
 use Data::Dumper;
+use WWW::SwaggerClient::UserApi;
+my $api_instance = WWW::SwaggerClient::UserApi->new(
+);
 
-my $api_instance = WWW::SwaggerClient::UserApi->new();
 my $username = 'username_example'; # string | The user name for login
 my $password = 'password_example'; # string | The password for login in clear text
 
@@ -267,8 +275,8 @@ if ($@) {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **username** | **string**| The user name for login | [optional] 
- **password** | **string**| The password for login in clear text | [optional] 
+ **username** | **string**| The user name for login | 
+ **password** | **string**| The password for login in clear text | 
 
 ### Return type
 
@@ -278,10 +286,10 @@ Name | Type | Description  | Notes
 
 No authorization required
 
-### HTTP reuqest headers
+### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: application/json, application/xml
+ - **Accept**: application/xml, application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -295,8 +303,10 @@ Logs out current logged in user session
 ### Example 
 ```perl
 use Data::Dumper;
+use WWW::SwaggerClient::UserApi;
+my $api_instance = WWW::SwaggerClient::UserApi->new(
+);
 
-my $api_instance = WWW::SwaggerClient::UserApi->new();
 
 eval { 
     $api_instance->logout_user();
@@ -317,10 +327,10 @@ void (empty response body)
 
 No authorization required
 
-### HTTP reuqest headers
+### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: application/json, application/xml
+ - **Accept**: application/xml, application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -334,8 +344,10 @@ This can only be done by the logged in user.
 ### Example 
 ```perl
 use Data::Dumper;
+use WWW::SwaggerClient::UserApi;
+my $api_instance = WWW::SwaggerClient::UserApi->new(
+);
 
-my $api_instance = WWW::SwaggerClient::UserApi->new();
 my $username = 'username_example'; # string | name that need to be deleted
 my $body = WWW::SwaggerClient::Object::User->new(); # User | Updated user object
 
@@ -352,7 +364,7 @@ if ($@) {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **username** | **string**| name that need to be deleted | 
- **body** | [**User**](User.md)| Updated user object | [optional] 
+ **body** | [**User**](User.md)| Updated user object | 
 
 ### Return type
 
@@ -362,10 +374,10 @@ void (empty response body)
 
 No authorization required
 
-### HTTP reuqest headers
+### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: application/json, application/xml
+ - **Accept**: application/xml, application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 

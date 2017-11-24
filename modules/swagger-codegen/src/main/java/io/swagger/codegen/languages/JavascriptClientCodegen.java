@@ -12,9 +12,11 @@ import io.swagger.codegen.CodegenProperty;
 import io.swagger.codegen.CodegenType;
 import io.swagger.codegen.SupportingFile;
 import io.swagger.codegen.DefaultCodegen;
+import io.swagger.models.ArrayModel;
 import io.swagger.models.Info;
 import io.swagger.models.License;
 import io.swagger.models.Model;
+import io.swagger.models.ModelImpl;
 import io.swagger.models.Operation;
 import io.swagger.models.Swagger;
 import io.swagger.models.properties.ArrayProperty;
@@ -30,14 +32,13 @@ import io.swagger.models.properties.Property;
 import io.swagger.models.properties.RefProperty;
 import io.swagger.models.properties.StringProperty;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -51,18 +52,40 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
     public static final String MODULE_NAME = "moduleName";
     public static final String PROJECT_DESCRIPTION = "projectDescription";
     public static final String PROJECT_VERSION = "projectVersion";
-    public static final String PROJECT_LICENSE_NAME = "projectLicenseName";
     public static final String USE_PROMISES = "usePromises";
     public static final String USE_INHERITANCE = "useInheritance";
     public static final String EMIT_MODEL_METHODS = "emitModelMethods";
     public static final String EMIT_JS_DOC = "emitJSDoc";
+    public static final String USE_ES6 = "useES6";
+
+    final String[][] JAVASCRIPT_SUPPORTING_FILES = new String[][] {
+            new String[] {"package.mustache", "package.json"},
+            new String[] {"index.mustache", "src/index.js"},
+            new String[] {"ApiClient.mustache", "src/ApiClient.js"},
+            new String[] {"git_push.sh.mustache", "git_push.sh"},
+            new String[] {"README.mustache", "README.md"},
+            new String[] {"mocha.opts", "mocha.opts"},
+            new String[] {"travis.yml", ".travis.yml"}
+    };
+
+    final String[][] JAVASCRIPT_ES6_SUPPORTING_FILES = new String[][] {
+            new String[] {"package.mustache", "package.json"},
+            new String[] {"index.mustache", "src/index.js"},
+            new String[] {"ApiClient.mustache", "src/ApiClient.js"},
+            new String[] {"git_push.sh.mustache", "git_push.sh"},
+            new String[] {"README.mustache", "README.md"},
+            new String[] {"mocha.opts", "mocha.opts"},
+            new String[] {"travis.yml", ".travis.yml"},
+            new String[] {".babelrc.mustache", ".babelrc"}
+    };
 
     protected String projectName;
     protected String moduleName;
     protected String projectDescription;
     protected String projectVersion;
-    protected String projectLicenseName;
+    protected String licenseName;
 
+    protected String invokerPackage;
     protected String sourceFolder = "src";
     protected String localVariablePrefix = "";
     protected boolean usePromises;
@@ -70,13 +93,19 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
     protected boolean emitJSDoc = true;
     protected String apiDocPath = "docs/";
     protected String modelDocPath = "docs/";
+    protected String apiTestPath = "api/";
+    protected String modelTestPath = "model/";
+    protected boolean useES6 = true; // default is ES6
 
     public JavascriptClientCodegen() {
         super();
         outputFolder = "generated-code/js";
         modelTemplateFiles.put("model.mustache", ".js");
+        modelTestTemplateFiles.put("model_test.mustache", ".js");
         apiTemplateFiles.put("api.mustache", ".js");
-        templateDir = "Javascript";
+        apiTestTemplateFiles.put("api_test.mustache", ".js");
+        // subfolder Javascript/es6
+        embeddedTemplateDir = templateDir = "Javascript" + File.separator + "es6";
         apiPackage = "api";
         modelPackage = "model";
         modelDocTemplateFiles.put("model_doc.mustache", ".md");
@@ -105,7 +134,7 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
         );
 
         languageSpecificPrimitives = new HashSet<String>(
-                Arrays.asList("String", "Boolean", "Integer", "Number", "Array", "Object", "Date", "File")
+                Arrays.asList("String", "Boolean", "Number", "Array", "Object", "Date", "File", "Blob")
         );
         defaultIncludes = new HashSet<String>(languageSpecificPrimitives);
 
@@ -118,25 +147,27 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
         typeMapping.put("List", "Array");
         typeMapping.put("boolean", "Boolean");
         typeMapping.put("string", "String");
-        typeMapping.put("int", "Integer"); // Huh? What is JS Integer?
+        typeMapping.put("int", "Number");
         typeMapping.put("float", "Number");
         typeMapping.put("number", "Number");
-        typeMapping.put("DateTime", "Date"); // Should this be dateTime?
-        typeMapping.put("Date", "Date"); // Should this be date?
-        typeMapping.put("long", "Integer");
-        typeMapping.put("short", "Integer");
+        typeMapping.put("DateTime", "Date");
+        typeMapping.put("date", "Date");
+        typeMapping.put("long", "Number");
+        typeMapping.put("short", "Number");
         typeMapping.put("char", "String");
         typeMapping.put("double", "Number");
         typeMapping.put("object", "Object");
-        typeMapping.put("integer", "Integer");
+        typeMapping.put("integer", "Number");
         // binary not supported in JavaScript client right now, using String as a workaround
-        typeMapping.put("ByteArray", "String"); // I don't see ByteArray defined in the Swagger docs.
-        typeMapping.put("binary", "String");
+        typeMapping.put("ByteArray", "Blob"); // I don't see ByteArray defined in the Swagger docs.
+        typeMapping.put("binary", "Blob");
+        typeMapping.put("UUID", "String");
 
         importMapping.clear();
 
         cliOptions.add(new CliOption(CodegenConstants.SOURCE_FOLDER, CodegenConstants.SOURCE_FOLDER_DESC).defaultValue("src"));
         cliOptions.add(new CliOption(CodegenConstants.LOCAL_VARIABLE_PREFIX, CodegenConstants.LOCAL_VARIABLE_PREFIX_DESC));
+        cliOptions.add(new CliOption(CodegenConstants.INVOKER_PACKAGE, CodegenConstants.INVOKER_PACKAGE_DESC));
         cliOptions.add(new CliOption(CodegenConstants.API_PACKAGE, CodegenConstants.API_PACKAGE_DESC));
         cliOptions.add(new CliOption(CodegenConstants.MODEL_PACKAGE, CodegenConstants.MODEL_PACKAGE_DESC));
         cliOptions.add(new CliOption(PROJECT_NAME,
@@ -147,7 +178,7 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
                 "description of the project (Default: using info.description or \"Client library of <projectName>\")"));
         cliOptions.add(new CliOption(PROJECT_VERSION,
                 "version of the project (Default: using info.version or \"1.0.0\")"));
-        cliOptions.add(new CliOption(PROJECT_LICENSE_NAME,
+        cliOptions.add(new CliOption(CodegenConstants.LICENSE_NAME,
                 "name of the license the project uses (Default: using info.license.name)"));
         cliOptions.add(new CliOption(USE_PROMISES,
                 "use Promises as return values from the client API, instead of superagent callbacks")
@@ -160,6 +191,11 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
                 .defaultValue(Boolean.TRUE.toString()));
         cliOptions.add(new CliOption(USE_INHERITANCE,
                 "use JavaScript prototype chains & delegation for inheritance")
+                .defaultValue(Boolean.TRUE.toString()));
+        cliOptions.add(new CliOption(CodegenConstants.HIDE_GENERATION_TIMESTAMP, "hides the timestamp when files were generated")
+                .defaultValue(Boolean.TRUE.toString()));
+        cliOptions.add(new CliOption(USE_ES6,
+                "use JavaScript ES6 (ECMAScript 6)")
                 .defaultValue(Boolean.TRUE.toString()));
     }
 
@@ -180,7 +216,20 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
 
     @Override
     public void processOpts() {
+        if (additionalProperties.containsKey(USE_ES6)) {
+            setUseES6(convertPropertyToBooleanAndWriteBack(USE_ES6));
+        } else {
+            setUseES6(true); // default to ES6
+        }
         super.processOpts();
+
+        // default HIDE_GENERATION_TIMESTAMP to true
+        if (!additionalProperties.containsKey(CodegenConstants.HIDE_GENERATION_TIMESTAMP)) {
+            additionalProperties.put(CodegenConstants.HIDE_GENERATION_TIMESTAMP, Boolean.TRUE.toString());
+        } else {
+            additionalProperties.put(CodegenConstants.HIDE_GENERATION_TIMESTAMP,
+                    Boolean.valueOf(additionalProperties().get(CodegenConstants.HIDE_GENERATION_TIMESTAMP).toString()));
+        }
 
         if (additionalProperties.containsKey(PROJECT_NAME)) {
             setProjectName(((String) additionalProperties.get(PROJECT_NAME)));
@@ -194,8 +243,8 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
         if (additionalProperties.containsKey(PROJECT_VERSION)) {
             setProjectVersion(((String) additionalProperties.get(PROJECT_VERSION)));
         }
-        if (additionalProperties.containsKey(PROJECT_LICENSE_NAME)) {
-            setProjectLicenseName(((String) additionalProperties.get(PROJECT_LICENSE_NAME)));
+        if (additionalProperties.containsKey(CodegenConstants.LICENSE_NAME)) {
+            setLicenseName(((String) additionalProperties.get(CodegenConstants.LICENSE_NAME)));
         }
         if (additionalProperties.containsKey(CodegenConstants.LOCAL_VARIABLE_PREFIX)) {
             setLocalVariablePrefix((String) additionalProperties.get(CodegenConstants.LOCAL_VARIABLE_PREFIX));
@@ -203,19 +252,23 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
         if (additionalProperties.containsKey(CodegenConstants.SOURCE_FOLDER)) {
             setSourceFolder((String) additionalProperties.get(CodegenConstants.SOURCE_FOLDER));
         }
+        if (additionalProperties.containsKey(CodegenConstants.INVOKER_PACKAGE)) {
+            setInvokerPackage((String) additionalProperties.get(CodegenConstants.INVOKER_PACKAGE));
+        }
         if (additionalProperties.containsKey(USE_PROMISES)) {
-            setUsePromises(Boolean.parseBoolean((String)additionalProperties.get(USE_PROMISES)));
+            setUsePromises(convertPropertyToBooleanAndWriteBack(USE_PROMISES));
         }
         if (additionalProperties.containsKey(USE_INHERITANCE)) {
-            setUseInheritance(Boolean.parseBoolean((String)additionalProperties.get(USE_INHERITANCE)));
+            setUseInheritance(convertPropertyToBooleanAndWriteBack(USE_INHERITANCE));
         } else {
             supportsInheritance = true;
+            supportsMixins = true;
         }
         if (additionalProperties.containsKey(EMIT_MODEL_METHODS)) {
-            setEmitModelMethods(Boolean.parseBoolean((String)additionalProperties.get(EMIT_MODEL_METHODS)));
+            setEmitModelMethods(convertPropertyToBooleanAndWriteBack(EMIT_MODEL_METHODS));
         }
         if (additionalProperties.containsKey(EMIT_JS_DOC)) {
-            setEmitJSDoc(Boolean.parseBoolean((String)additionalProperties.get(EMIT_JS_DOC)));
+            setEmitJSDoc(convertPropertyToBooleanAndWriteBack(EMIT_JS_DOC));
         }
     }
 
@@ -227,22 +280,21 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
             Info info = swagger.getInfo();
             if (StringUtils.isBlank(projectName) && info.getTitle() != null) {
                 // when projectName is not specified, generate it from info.title
-                projectName = dashize(info.getTitle());
+                projectName = sanitizeName(dashize(info.getTitle()));
             }
             if (StringUtils.isBlank(projectVersion)) {
                 // when projectVersion is not specified, use info.version
-                projectVersion = info.getVersion();
+                projectVersion = escapeUnsafeCharacters(escapeQuotationMark(info.getVersion()));
             }
             if (projectDescription == null) {
                 // when projectDescription is not specified, use info.description
-                projectDescription = info.getDescription();
+                projectDescription = sanitizeName(info.getDescription());
             }
-            if (additionalProperties.get(PROJECT_LICENSE_NAME) == null) {
-                // when projectLicense is not specified, use info.license
-                if (info.getLicense() != null) {
-                    License license = info.getLicense();
-                    additionalProperties.put(PROJECT_LICENSE_NAME, license.getName());
-                }
+
+            // when licenceName is not specified, use info.license
+            if (additionalProperties.get(CodegenConstants.LICENSE_NAME) == null && info.getLicense() != null) {
+                License license = info.getLicense();
+                licenseName = license.getName();
             }
         }
 
@@ -259,12 +311,17 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
         if (projectDescription == null) {
             projectDescription = "Client library of " + projectName;
         }
+        if (StringUtils.isBlank(licenseName)) {
+            licenseName = "Unlicense";
+        }
 
         additionalProperties.put(PROJECT_NAME, projectName);
         additionalProperties.put(MODULE_NAME, moduleName);
         additionalProperties.put(PROJECT_DESCRIPTION, escapeText(projectDescription));
         additionalProperties.put(PROJECT_VERSION, projectVersion);
+        additionalProperties.put(CodegenConstants.LICENSE_NAME, licenseName);
         additionalProperties.put(CodegenConstants.API_PACKAGE, apiPackage);
+        additionalProperties.put(CodegenConstants.INVOKER_PACKAGE, invokerPackage);
         additionalProperties.put(CodegenConstants.LOCAL_VARIABLE_PREFIX, localVariablePrefix);
         additionalProperties.put(CodegenConstants.MODEL_PACKAGE, modelPackage);
         additionalProperties.put(CodegenConstants.SOURCE_FOLDER, sourceFolder);
@@ -272,31 +329,75 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
         additionalProperties.put(USE_INHERITANCE, supportsInheritance);
         additionalProperties.put(EMIT_MODEL_METHODS, emitModelMethods);
         additionalProperties.put(EMIT_JS_DOC, emitJSDoc);
+        additionalProperties.put(USE_ES6, useES6);
 
         // make api and model doc path available in mustache template
         additionalProperties.put("apiDocPath", apiDocPath);
         additionalProperties.put("modelDocPath", modelDocPath);
 
-        supportingFiles.add(new SupportingFile("package.mustache", "", "package.json"));
-        supportingFiles.add(new SupportingFile("index.mustache", sourceFolder, "index.js"));
-        supportingFiles.add(new SupportingFile("ApiClient.mustache", sourceFolder, "ApiClient.js"));
-        supportingFiles.add(new SupportingFile("git_push.sh.mustache", "", "git_push.sh"));
-        supportingFiles.add(new SupportingFile("README.mustache", "", "README.md"));
+        String[][] supportingTemplateFiles = JAVASCRIPT_SUPPORTING_FILES;
+        if (useES6) {
+            supportingTemplateFiles = JAVASCRIPT_ES6_SUPPORTING_FILES;
+        }
+
+        for (String[] supportingTemplateFile :supportingTemplateFiles) {
+            supportingFiles.add(new SupportingFile(supportingTemplateFile[0], "", supportingTemplateFile[1]));
+        }
     }
 
     @Override
-    public String escapeReservedWord(String name) {
+    public String escapeReservedWord(String name) {           
+        if(this.reservedWordsMappings().containsKey(name)) {
+            return this.reservedWordsMappings().get(name);
+        }
         return "_" + name;
+    }
+
+    /**
+     * Concatenates an array of path segments into a path string.
+     * @param segments The path segments to concatenate. A segment may contain either of the file separator characters '\' or '/'.
+     * A segment is ignored if it is <code>null</code>, empty or &quot;.&quot;.
+     * @return A path string using the correct platform-specific file separator character.
+     */
+    private String createPath(String... segments) {
+        StringBuilder buf = new StringBuilder();
+        for (String segment : segments) {
+            if (!StringUtils.isEmpty(segment) && !segment.equals(".")) {
+                if (buf.length() != 0)
+                    buf.append(File.separatorChar);
+                buf.append(segment);
+            }
+        }
+        for (int i = 0; i < buf.length(); i++) {
+            char c = buf.charAt(i);
+            if ((c == '/' || c == '\\') && c != File.separatorChar)
+                buf.setCharAt(i, File.separatorChar);
+        }
+        return buf.toString();
+    }
+
+    @Override
+    public String apiTestFileFolder() {
+        return (outputFolder + "/test/" + apiTestPath).replace('/', File.separatorChar);
+    }
+
+    @Override
+    public String modelTestFileFolder() {
+        return (outputFolder + "/test/" + modelTestPath).replace('/', File.separatorChar);
     }
 
     @Override
     public String apiFileFolder() {
-        return outputFolder + '/' + sourceFolder + '/' + apiPackage().replace('.', '/');
+        return createPath(outputFolder, sourceFolder, invokerPackage, apiPackage());
     }
 
     @Override
     public String modelFileFolder() {
-        return outputFolder + '/' + sourceFolder + '/' + modelPackage().replace('.', '/');
+        return createPath(outputFolder, sourceFolder, invokerPackage, modelPackage());
+    }
+
+    public void setInvokerPackage(String invokerPackage) {
+        this.invokerPackage = invokerPackage;
     }
 
     public void setSourceFolder(String sourceFolder) {
@@ -323,16 +424,28 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
         this.projectVersion = projectVersion;
     }
 
-    public void setProjectLicenseName(String projectLicenseName) {
-        this.projectLicenseName = projectLicenseName;
+    public void setLicenseName(String licenseName) {
+        this.licenseName = licenseName;
     }
 
     public void setUsePromises(boolean usePromises) {
         this.usePromises = usePromises;
     }
 
+    public void setUseES6(boolean useES6) {
+        this.useES6 = useES6;
+        if (useES6) {
+            embeddedTemplateDir = templateDir = "Javascript/es6";
+            LOGGER.info("Using JS ES6 templates");
+        } else {
+            embeddedTemplateDir = templateDir = "Javascript";
+            LOGGER.info("Using JS ES5 templates");
+        }
+    }
+
     public void setUseInheritance(boolean useInheritance) {
         this.supportsInheritance = useInheritance;
+        this.supportsMixins = useInheritance;
     }
 
     public void setEmitModelMethods(boolean emitModelMethods) {
@@ -345,12 +458,12 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
 
     @Override
     public String apiDocFileFolder() {
-        return (outputFolder + "/" + apiDocPath).replace('/', File.separatorChar);
+        return createPath(outputFolder, apiDocPath);
     }
 
     @Override
     public String modelDocFileFolder() {
-        return (outputFolder + "/" + modelDocPath).replace('/', File.separatorChar);
+        return createPath(outputFolder, modelDocPath);
     }
 
     @Override
@@ -361,6 +474,16 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
     @Override
     public String toModelDocFilename(String name) {
         return toModelName(name);
+    }
+
+    @Override
+    public String toApiTestFilename(String name) {
+        return toApiName(name) + ".spec";
+    }
+
+    @Override
+    public String toModelTestFilename(String name) {
+        return toModelName(name) + ".spec";
     }
 
     @Override
@@ -524,26 +647,6 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
             type = p.dataType;
         }
 
-        typeMapping.put("array", "Array");
-        typeMapping.put("List", "Array");
-        typeMapping.put("map", "Object");
-        typeMapping.put("object", "Object");
-        typeMapping.put("boolean", "Boolean");
-        typeMapping.put("char", "String");
-        typeMapping.put("string", "String");
-        typeMapping.put("short", "Integer");
-        typeMapping.put("int", "Integer");
-        typeMapping.put("integer", "Integer");
-        typeMapping.put("long", "Integer");
-        typeMapping.put("float", "Number");
-        typeMapping.put("double", "Number");
-        typeMapping.put("number", "Number");
-        typeMapping.put("DateTime", "Date");
-        typeMapping.put("Date", "Date");
-        typeMapping.put("file", "File");
-        // binary not supported in JavaScript client right now, using String as a workaround
-        typeMapping.put("binary", "String");
-
         if ("String".equals(type)) {
             if (example == null) {
                 example = p.paramName + "_example";
@@ -594,7 +697,7 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
      * @return Normalized type
      */
     public String normalizeType(String type) {
-      return type.replaceAll("\\b(Boolean|Integer|Number|String|Date)\\b", "'$1'");
+      return type.replaceAll("\\b(Boolean|Integer|Number|String|Date|Blob)\\b", "'$1'");
     }
 
     @Override
@@ -641,6 +744,9 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
         op.returnType = normalizeType(op.returnType);
       }
 
+      //path is an unescaped variable in the mustache template api.mustache line 82 '<&path>'    
+      op.path = sanitizePath(op.path);
+
       // Set vendor-extension to be used in template:
       //     x-codegen-hasMoreRequired
       //     x-codegen-hasMoreOptional
@@ -648,7 +754,7 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
       CodegenParameter lastRequired = null;
       CodegenParameter lastOptional = null;
       for (CodegenParameter p : op.allParams) {
-          if (p.required != null && p.required) {
+          if (p.required) {
               lastRequired = p;
           } else {
               lastOptional = p;
@@ -674,14 +780,32 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
         CodegenModel codegenModel = super.fromModel(name, model, allDefinitions);
 
         if (allDefinitions != null && codegenModel != null && codegenModel.parent != null && codegenModel.hasEnums) {
-            final Model parentModel = allDefinitions.get(toModelName(codegenModel.parent));
-            final CodegenModel parentCodegenModel = super.fromModel(codegenModel.parent, parentModel);
+            final Model parentModel = allDefinitions.get(codegenModel.parentSchema);
+            final CodegenModel parentCodegenModel = super.fromModel(codegenModel.parent, parentModel, allDefinitions);
             codegenModel = JavascriptClientCodegen.reconcileInlineEnums(codegenModel, parentCodegenModel);
+        }
+        if (model instanceof ArrayModel) {
+            ArrayModel am = (ArrayModel) model;
+            if (am.getItems() != null) {
+                codegenModel.vendorExtensions.put("x-isArray", true);
+                codegenModel.vendorExtensions.put("x-itemType", getSwaggerType(am.getItems()));
+            }
+        } else if (model instanceof ModelImpl) {
+            ModelImpl mm = (ModelImpl)model;
+            if (mm.getAdditionalProperties() != null) {
+                codegenModel.vendorExtensions.put("x-isMap", true);
+                codegenModel.vendorExtensions.put("x-itemType", getSwaggerType(mm.getAdditionalProperties()));
+            }
         }
 
         return codegenModel;
     }
 
+    private String sanitizePath(String p) {
+        //prefer replace a ', instead of a fuLL URL encode for readability
+        return p.replaceAll("'", "%27");
+    }
+    
     private String trimBrackets(String s) {
         if (s != null) {
             int beginIdx = s.charAt(0) == '[' ? 1 : 0;
@@ -694,11 +818,8 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
     }
 
     private String getModelledType(String dataType) {
-        return "module:" + (StringUtils.isEmpty(modelPackage) ? "" : (modelPackage + "/")) + dataType;
-    }
-
-    private String getJSDocTypeWithBraces(CodegenModel cm, CodegenProperty cp) {
-        return "{" + getJSDocType(cm, cp) + "}";
+        return "module:" + (StringUtils.isEmpty(invokerPackage) ? "" : (invokerPackage + "/"))
+            + (StringUtils.isEmpty(modelPackage) ? "" : (modelPackage + "/")) + dataType;
     }
 
     private String getJSDocType(CodegenModel cm, CodegenProperty cp) {
@@ -722,10 +843,6 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
         return cp.isEnum || !languageSpecificPrimitives.contains(cp.baseType == null ? cp.datatype : cp.baseType);
     }
 
-    private String getJSDocTypeWithBraces(CodegenParameter cp) {
-        return "{" + getJSDocType(cp) + "}";
-    }
-
     private String getJSDocType(CodegenParameter cp) {
         String dataType = trimBrackets(cp.dataType);
         if (isModelledType(cp))
@@ -741,11 +858,6 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
     private boolean isModelledType(CodegenParameter cp) {
         // N.B. enums count as modelled types, file is not modelled (SuperAgent uses some 3rd party library).
         return cp.isEnum || !languageSpecificPrimitives.contains(cp.baseType == null ? cp.dataType : cp.baseType);
-    }
-
-    private String getJSDocTypeWithBraces(CodegenOperation co) {
-        String jsDocType = getJSDocType(co);
-        return jsDocType == null ? null : "{" + jsDocType + "}";
     }
 
     private String getJSDocType(CodegenOperation co) {
@@ -779,7 +891,7 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
                 List<String> argList = new ArrayList<String>();
                 boolean hasOptionalParams = false;
                 for (CodegenParameter p : operation.allParams) {
-                    if (p.required != null && p.required) {
+                    if (p.required) {
                         argList.add(p.paramName);
                     } else {
                       hasOptionalParams = true;
@@ -795,10 +907,10 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
 
                 // Store JSDoc type specification into vendor-extension: x-jsdoc-type.
                 for (CodegenParameter cp : operation.allParams) {
-                    String jsdocType = getJSDocTypeWithBraces(cp);
+                    String jsdocType = getJSDocType(cp);
                     cp.vendorExtensions.put("x-jsdoc-type", jsdocType);
                 }
-                String jsdocType = getJSDocTypeWithBraces(operation);
+                String jsdocType = getJSDocType(operation);
                 operation.vendorExtensions.put("x-jsdoc-type", jsdocType);
             }
         }
@@ -808,6 +920,7 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
     @SuppressWarnings("unchecked")
     @Override
     public Map<String, Object> postProcessModels(Map<String, Object> objs) {
+        objs = super.postProcessModelsEnum(objs);
         List<Object> models = (List<Object>) objs.get("models");
         for (Object _mo : models) {
             Map<String, Object> mo = (Map<String, Object>) _mo;
@@ -816,61 +929,25 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
             // Collect each model's required property names in *document order*.
             // NOTE: can't use 'mandatory' as it is built from ModelImpl.getRequired(), which sorts names
             // alphabetically and in any case the document order of 'required' and 'properties' can differ.
-            List<String> required = new ArrayList<String>();
-            List<String> allRequired = supportsInheritance ? new ArrayList<String>() : required;
+            List<CodegenProperty> required = new ArrayList<>();
+            List<CodegenProperty> allRequired = supportsInheritance || supportsMixins ? new ArrayList<CodegenProperty>() : required;
             cm.vendorExtensions.put("x-required", required);
             cm.vendorExtensions.put("x-all-required", allRequired);
 
             for (CodegenProperty var : cm.vars) {
-                Map<String, Object> allowableValues = var.allowableValues;
-
                 // Add JSDoc @type value for this property.
-                String jsDocType = getJSDocTypeWithBraces(cm, var);
+                String jsDocType = getJSDocType(cm, var);
                 var.vendorExtensions.put("x-jsdoc-type", jsDocType);
 
                 if (Boolean.TRUE.equals(var.required)) {
-                    required.add(var.name);
+                    required.add(var);
                 }
-
-                // handle ArrayProperty
-                if (var.items != null) {
-                    allowableValues = var.items.allowableValues;
-                }
-
-                if (allowableValues == null) {
-                    continue;
-                }
-                List<String> values = (List<String>) allowableValues.get("values");
-                if (values == null) {
-                    continue;
-                }
-
-                // put "enumVars" map into `allowableValues", including `name` and `value`
-                List<Map<String, String>> enumVars = new ArrayList<Map<String, String>>();
-                String commonPrefix = findCommonPrefixOfVars(values);
-                int truncateIdx = commonPrefix.length();
-                for (String value : values) {
-                    Map<String, String> enumVar = new HashMap<String, String>();
-                    String enumName;
-                    if (truncateIdx == 0) {
-                        enumName = value;
-                    } else {
-                        enumName = value.substring(truncateIdx);
-                        if ("".equals(enumName)) {
-                            enumName = value;
-                        }
-                    }
-                    enumVar.put("name", toEnumVarName(enumName));
-                    enumVar.put("value", value);
-                    enumVars.add(enumVar);
-                }
-                allowableValues.put("enumVars", enumVars);
             }
 
-            if (supportsInheritance) {
+            if (supportsInheritance || supportsMixins) {
                 for (CodegenProperty var : cm.allVars) {
                     if (Boolean.TRUE.equals(var.required)) {
-                        allRequired.add(var.name);
+                        allRequired.add(var);
                     }
                 }
             }
@@ -878,14 +955,14 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
             // set vendor-extension: x-codegen-hasMoreRequired
             CodegenProperty lastRequired = null;
             for (CodegenProperty var : cm.vars) {
-                if (var.required != null && var.required) {
+                if (var.required) {
                     lastRequired = var;
                 }
             }
             for (CodegenProperty var : cm.vars) {
                 if (var == lastRequired) {
                     var.vendorExtensions.put("x-codegen-hasMoreRequired", false);
-                } else if (var.required != null && var.required) {
+                } else if (var.required) {
                     var.vendorExtensions.put("x-codegen-hasMoreRequired", true);
                 }
             }
@@ -897,22 +974,6 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
     protected boolean needToImport(String type) {
         return !defaultIncludes.contains(type)
             && !languageSpecificPrimitives.contains(type);
-    }
-
-    private static String findCommonPrefixOfVars(List<String> vars) {
-        String prefix = StringUtils.getCommonPrefix(vars.toArray(new String[vars.size()]));
-        // exclude trailing characters that should be part of a valid variable
-        // e.g. ["status-on", "status-off"] => "status-" (not "status-o")
-        return prefix.replaceAll("[a-zA-Z0-9]+\\z", "");
-    }
-
-    private static String toEnumVarName(String value) {
-        String var = value.replaceAll("\\W+", "_").toUpperCase();
-        if (var.matches("\\d.*")) {
-            return "_" + var;
-        } else {
-            return var;
-        }
     }
 
     private static CodegenModel reconcileInlineEnums(CodegenModel codegenModel, CodegenModel parentCodegenModel) {
@@ -954,7 +1015,7 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
                 int count = 0, numVars = codegenProperties.size();
                 for(CodegenProperty codegenProperty : codegenProperties) {
                     count += 1;
-                    codegenProperty.hasMore = (count < numVars) ? true : null;
+                    codegenProperty.hasMore = (count < numVars) ? true : false;
                 }
                 codegenModel.vars = codegenProperties;
             }
@@ -970,6 +1031,46 @@ public class JavascriptClientCodegen extends DefaultCodegen implements CodegenCo
             return "invalidPackageName";
         }
         return packageName;
+    }
+
+    @Override
+    public String toEnumName(CodegenProperty property) {
+        return sanitizeName(camelize(property.name)) + "Enum";
+    }
+
+    @Override
+    public String toEnumVarName(String value, String datatype) {
+        if (value.length() == 0) {
+            return "empty";
+        }
+
+        // for symbol, e.g. $, #
+        if (getSymbolName(value) != null) {
+            return (getSymbolName(value)).toUpperCase();
+        }
+
+        return value;
+    }
+
+    @Override
+    public String toEnumValue(String value, String datatype) {
+        if ("Integer".equals(datatype) || "Number".equals(datatype)) {
+            return value;
+        } else {
+            return "\"" + escapeText(value) + "\"";
+        }
+    }
+
+
+    @Override
+    public String escapeQuotationMark(String input) {
+        // remove ', " to avoid code injection
+        return input.replace("\"", "").replace("'", "");
+    }
+
+    @Override
+    public String escapeUnsafeCharacters(String input) {
+        return input.replace("*/", "*_/").replace("/*", "/_*");
     }
 
 }

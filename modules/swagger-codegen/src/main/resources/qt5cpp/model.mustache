@@ -1,3 +1,4 @@
+{{>licenseInfo}}
 {{#models}}{{#model}}/*
  * {{classname}}.h
  * 
@@ -20,8 +21,12 @@ using namespace Tizen::Web::Json;
 {{#imports}}{{{import}}}
 {{/imports}}
 
-{{#models}}{{#model}}
-namespace Swagger {
+{{#models}}
+{{#model}}
+
+{{#cppNamespaceDeclarations}}
+namespace {{this}} {
+{{/cppNamespaceDeclarations}}
 
 class {{classname}}: public {{prefix}}Object {
 public:
@@ -43,15 +48,18 @@ public:
 
     {{#vars}}
     {{datatype}} {{getter}}();
-    void {{setter}}({{datatype}} {{name}});
+    void {{setter}}({{{datatype}}} {{name}});
     {{/vars}}
 
 private:
-    {{#vars}}{{datatype}} {{name}};
+    {{#vars}}
+    {{{datatype}}} {{name}};
     {{/vars}}
 };
 
-} /* namespace Swagger */
+{{#cppNamespaceDeclarations}}
+}
+{{/cppNamespaceDeclarations}}
 
 #endif /* {{classname}}_H_ */
 {{/model}}

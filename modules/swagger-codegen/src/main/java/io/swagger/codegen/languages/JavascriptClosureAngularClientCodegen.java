@@ -3,16 +3,23 @@ package io.swagger.codegen.languages;
 import io.swagger.codegen.CodegenModel;
 import io.swagger.codegen.*;
 import io.swagger.models.properties.*;
+import io.swagger.models.Swagger;
 
 import java.util.TreeSet;
 import java.util.*;
 import java.io.File;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 public class JavascriptClosureAngularClientCodegen extends DefaultCodegen implements CodegenConfig {
+
+    public static final String USE_ES6 = "useEs6";
+
+    protected boolean useEs6;
+
     public JavascriptClosureAngularClientCodegen() {
         super();
+        outputFolder = "generated-code/javascript-closure-angular";
 
         supportsInheritance = false;
         setReservedWordsLowerCase(Arrays.asList("abstract",
@@ -64,12 +71,43 @@ public class JavascriptClosureAngularClientCodegen extends DefaultCodegen implem
 
         typeMapping.put("binary", "string");
 
-        outputFolder = "generated-code/javascript-closure-angular";
-        modelTemplateFiles.put("model.mustache", ".js");
-        apiTemplateFiles.put("api.mustache", ".js");
-        embeddedTemplateDir = templateDir = "Javascript-Closure-Angular";
-        apiPackage = "API.Client";
-        modelPackage = "API.Client";
+        cliOptions.add(new CliOption(CodegenConstants.HIDE_GENERATION_TIMESTAMP, "hides the timestamp when files were generated")
+                .defaultValue(Boolean.TRUE.toString()));
+        cliOptions.add(new CliOption(USE_ES6,
+                "use ES6 templates")
+                .defaultValue(Boolean.FALSE.toString()));
+    }
+
+    @Override
+    public void processOpts() {
+        super.processOpts();
+
+        // default HIDE_GENERATION_TIMESTAMP to true
+        if (!additionalProperties.containsKey(CodegenConstants.HIDE_GENERATION_TIMESTAMP)) {
+            additionalProperties.put(CodegenConstants.HIDE_GENERATION_TIMESTAMP, Boolean.TRUE.toString());
+        }
+
+        if (additionalProperties.containsKey(USE_ES6)) {
+            setUseEs6(convertPropertyToBooleanAndWriteBack(USE_ES6));
+        }
+    }
+
+    @Override
+    public void preprocessSwagger(Swagger swagger) {
+        super.preprocessSwagger(swagger);
+
+        if (useEs6) {
+            embeddedTemplateDir = templateDir = "Javascript-Closure-Angular/es6";
+            apiPackage = "resources";
+            apiTemplateFiles.put("api.mustache", ".js");
+            supportingFiles.add(new SupportingFile("module.mustache", "", "module.js"));
+        } else {
+            modelTemplateFiles.put("model.mustache", ".js");
+            apiTemplateFiles.put("api.mustache", ".js");
+            embeddedTemplateDir = templateDir = "Javascript-Closure-Angular";
+            apiPackage = "API.Client";
+            modelPackage = "API.Client";
+        }
     }
 
     @Override
@@ -79,7 +117,7 @@ public class JavascriptClosureAngularClientCodegen extends DefaultCodegen implem
 
     @Override
     public String getHelp() {
-        return "Generates a Javascript AngularJS client library annotated with Google Closure Compiler annotations" +
+        return "Generates a Javascript AngularJS client library (beta) annotated with Google Closure Compiler annotations" +
             "(https://developers.google.com/closure/compiler/docs/js-for-compiler?hl=en)";
     }
 
@@ -90,6 +128,9 @@ public class JavascriptClosureAngularClientCodegen extends DefaultCodegen implem
 
     @Override
     public String escapeReservedWord(String name) {
+        if(this.reservedWordsMappings().containsKey(name)) {
+            return this.reservedWordsMappings().get(name);
+        }
         return "_" + name;
     }
 
@@ -104,6 +145,9 @@ public class JavascriptClosureAngularClientCodegen extends DefaultCodegen implem
 
     @Override
     public String toVarName(String name) {
+        // sanitize name
+        name = sanitizeName(name);
+
         // replace - with _ e.g. created-at => created_at
         name = name.replaceAll("-", "_");
 
@@ -224,4 +268,37 @@ public class JavascriptClosureAngularClientCodegen extends DefaultCodegen implem
         return objs;
     }
 
+    @Override
+    public String toOperationId(String operationId) {
+        // throw exception if method name is empty
+        if (StringUtils.isEmpty(operationId)) {
+            throw new RuntimeException("Empty method/operation name (operationId) not allowed");
+        }
+
+        operationId = camelize(sanitizeName(operationId), true);
+
+        // method name cannot use reserved keyword, e.g. return
+        if (isReservedWord(operationId)) {
+            String newOperationId = camelize("call_" + operationId, true);
+            LOGGER.warn(operationId + " (reserved word) cannot be used as method name. Renamed to " + newOperationId);
+            return newOperationId;
+        }
+
+        return operationId;
+    }
+
+    @Override
+    public String escapeQuotationMark(String input) {
+        // remove ', " to avoid code injection
+        return input.replace("\"", "").replace("'", "");
+    }
+
+    @Override
+    public String escapeUnsafeCharacters(String input) {
+        return input.replace("*/", "*_/").replace("/*", "/_*");
+    }
+
+    public void setUseEs6(boolean useEs6) {
+        this.useEs6 = useEs6;
+    }
 }

@@ -1,17 +1,22 @@
+{{>licenseInfo}}
 #ifndef _{{prefix}}_OBJECT_H_
 #define _{{prefix}}_OBJECT_H_
 
 #include <QJsonValue>
 
+{{#cppNamespaceDeclarations}}
+namespace {{this}} {
+{{/cppNamespaceDeclarations}}
+
 class {{prefix}}Object {
   public:
     virtual QJsonObject* asJsonObject() {
-      return NULL;
+      return nullptr;
     }
     virtual ~SWGObject() {}
     virtual SWGObject* fromJson(QString &jsonString) {
         Q_UNUSED(jsonString);
-        return NULL;
+        return nullptr;
     }
     virtual void fromJsonObject(QJsonObject &json) {
         Q_UNUSED(json);
@@ -20,5 +25,9 @@ class {{prefix}}Object {
         return QString("");
     }
 };
+
+{{#cppNamespaceDeclarations}}
+}
+{{/cppNamespaceDeclarations}}
 
 #endif /* _{{prefix}}_OBJECT_H_ */
