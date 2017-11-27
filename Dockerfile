@@ -1,5 +1,7 @@
 FROM jimschubert/8-jdk-alpine-mvn:1.0
 
+RUN apk add --no-cache gnupg curl tar xz nodejs bash
+
 # gpg keys listed at https://github.com/nodejs/node
 RUN set -ex \
   && for key in \
@@ -16,15 +18,6 @@ RUN set -ex \
   done
 
 ENV NPM_CONFIG_LOGLEVEL info
-ENV NODE_VERSION 5.9.1
-ENV NPM_VERSION 2.14.1
-
-RUN curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.xz" \
-    && curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc" \
-    && gpg --batch --decrypt --output SHASUMS256.txt SHASUMS256.txt.asc \
-    && grep " node-v$NODE_VERSION-linux-x64.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
-    && tar -xJf "node-v$NODE_VERSION-linux-x64.tar.xz" -C /usr/local --strip-components=1 \
-    && rm "node-v$NODE_VERSION-linux-x64.tar.xz" SHASUMS256.txt.asc SHASUMS256.txt
 
 RUN mkdir -p /tools   
 WORKDIR /tools
@@ -38,11 +31,23 @@ VOLUME  ${MAVEN_HOME}/.m2/repository
 # Required from a licensing standpoint
 COPY ./LICENSE ${GEN_DIR}
 
+COPY ./google_checkstyle.xml ${GEN_DIR}
+
 COPY gulpfile.js /tools/gulpfile.js
 COPY package.json /tools/package.json
 
-RUN npm config set registry http://registry.npmjs.org/ && npm install
-RUN npm install -g gulp
-RUN npm install -g js-beautify
+COPY ./modules/swagger-codegen-maven-plugin ${GEN_DIR}/modules/swagger-codegen-maven-plugin
+COPY ./modules/swagger-codegen-cli ${GEN_DIR}/modules/swagger-codegen-cli
+COPY ./modules/swagger-codegen ${GEN_DIR}/modules/swagger-codegen
+COPY ./modules/swagger-generator ${GEN_DIR}/modules/swagger-generator
+COPY ./pom.xml ${GEN_DIR}
 
-CMD ["gulp", "watch"]
+# Pre-compile swagger-codegen-cli
+RUN mvn -am -pl "modules/swagger-codegen-cli" package
+
+# This exists at the end of the file to benefit from cached layers when modifying docker-entrypoint.sh.
+COPY docker-entrypoint.sh /usr/local/bin/
+
+ENTRYPOINT ["docker-entrypoint.sh"]
+
+CMD ["help"]
